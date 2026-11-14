@@ -14,7 +14,7 @@ import { createSSEParser } from './sse.js';
  * status when the provider refuses the request, before any streaming starts.
  */
 export async function* streamChat({ config, messages, signal, temperature = 0.4, maxTokens = 8192 }) {
-  const models = [...new Set([config.model, ...(config.fallbackModels ?? [])])];
+  const models = orderByHealth([...new Set([config.model, ...(config.fallbackModels ?? [])])], config);
   let response;
   let model;
 
@@ -22,9 +22,21 @@ export async function* streamChat({ config, messages, signal, temperature = 0.4,
   // Before anything has streamed, it's safe to try the next model instead.
   for (let i = 0; i < models.length; i++) {
     model = models[i];
-    response = await requestModel({ config, model, messages, signal, temperature, maxTokens });
+    const isLast = i === models.length - 1;
+    response = await requestModel({
+      config,
+      model,
+      messages,
+      signal,
+      temperature,
+      maxTokens,
+      // Only cut a slow model short when there's another one to try.
+      acceptTimeoutMs: isLast ? null : config.timeouts?.switchModelMs,
+    });
     if (!response.error) break;
-    if (i === models.length - 1 || !worthAnotherModel(response.error)) throw response.error;
+    if (!worthAnotherModel(response.error)) throw response.error;
+    markUnhealthy(config, model);
+    if (isLast) throw response.error;
     console.warn(`[llm] ${model} failed (${response.error.upstreamStatus ?? response.error.code}); trying ${models[i + 1]}.`);
   }
 
@@ -48,6 +60,29 @@ export async function* streamChat({ config, messages, signal, temperature = 0.4,
 
 const TRY_ANOTHER_MODEL = new Set([429, 500, 502, 503, 504, 529]);
 
+/*
+ * Models that just failed are skipped for a while, so every visitor doesn't
+ * wait for the same overloaded model to time out. A skipped model is moved
+ * to the end of the list rather than dropped, so it's still tried if
+ * everything else fails too.
+ */
+const unhealthyUntil = new Map(); // "baseUrl model" -> timestamp
+
+function markUnhealthy(config, model) {
+  unhealthyUntil.set(`${config.baseUrl} ${model}`, Date.now() + (config.timeouts?.modelCooldownMs ?? 120_000));
+}
+
+function orderByHealth(models, config) {
+  const now = Date.now();
+  const healthy = (m) => (unhealthyUntil.get(`${config.baseUrl} ${m}`) ?? 0) <= now;
+  return [...models.filter(healthy), ...models.filter((m) => !healthy(m))];
+}
+
+/** For tests: forget which models failed. */
+export function resetModelHealth() {
+  unhealthyUntil.clear();
+}
+
 function worthAnotherModel(error) {
   return error.code === 'model_not_found' || TRY_ANOTHER_MODEL.has(error.upstreamStatus);
 }
@@ -63,7 +98,7 @@ async function requestModel({ config, model, ...rest }) {
   return response;
 }
 
-async function request({ config, model, messages, signal, temperature, maxTokens, jsonMode }) {
+async function request({ config, model, messages, signal, temperature, maxTokens, jsonMode, acceptTimeoutMs }) {
   const body = {
     model,
     messages,
@@ -77,21 +112,44 @@ async function request({ config, model, messages, signal, temperature, maxTokens
   const headers = { 'Content-Type': 'application/json' };
   if (config.apiKey) headers.Authorization = `Bearer ${config.apiKey}`;
 
+  // One controller per attempt, linked to the request's own signal, so a slow
+  // model can be abandoned without cancelling the whole request. The timer
+  // only covers waiting for the model to accept; streaming isn't cut short.
+  const attempt = new AbortController();
+  const forward = () => attempt.abort(signal.reason);
+  if (signal?.aborted) forward();
+  else signal?.addEventListener('abort', forward, { once: true });
+  const acceptTimer =
+    acceptTimeoutMs &&
+    setTimeout(
+      () =>
+        attempt.abort(
+          new AppError('timeout', `${config.label} (${model}) didn't respond within ${Math.round(acceptTimeoutMs / 1000)} seconds.`, {
+            status: 504,
+            upstreamStatus: 504,
+          }),
+        ),
+      acceptTimeoutMs,
+    );
+
   let res;
   try {
     res = await fetch(`${config.baseUrl}/chat/completions`, {
       method: 'POST',
       headers,
       body: JSON.stringify(body),
-      signal,
+      signal: attempt.signal,
     });
   } catch (err) {
     if (signal?.aborted) throw signal.reason ?? err;
+    if (attempt.signal.aborted && attempt.signal.reason instanceof AppError) return { error: attempt.signal.reason };
     const reason = err.cause?.code || err.message;
     throw new AppError('provider_unreachable', `Couldn't reach ${config.label} at ${config.baseUrl} (${reason}).`, {
       status: 502,
       cause: err,
     });
+  } finally {
+    clearTimeout(acceptTimer);
   }
 
   if (!res.ok) {

@@ -115,6 +115,11 @@ export function loadConfig(env = process.env) {
       // Once tokens are flowing, a long silence means the stream is stuck.
       idleMs: Number(env.LLM_IDLE_TIMEOUT_MS) || 20_000,
       totalMs: Number(env.LLM_TOTAL_TIMEOUT_MS) || 120_000,
+      // With a fallback model available, don't wait longer than this for a
+      // model to accept the request (overloaded models can queue for 30 s+).
+      switchModelMs: Number(env.LLM_SWITCH_MODEL_AFTER_MS) || 15_000,
+      // How long to skip a model after it was overloaded or rate limited.
+      modelCooldownMs: Number(env.LLM_MODEL_COOLDOWN_MS) || 120_000,
     },
     problem: null,
   };

@@ -1,8 +1,9 @@
 import http from 'node:http';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { loadConfig } from '../server/config.js';
 import { createApp } from '../server/index.js';
-import { streamChat } from '../server/llm.js';
+import { resetModelHealth, streamChat } from '../server/llm.js';
+import { buildGenerateMessages } from '../server/prompt.js';
 import { createSSEParser } from '../server/sse.js';
 
 function listen(handler) {
@@ -67,6 +68,13 @@ describe('streamChat against a fake OpenAI-compatible provider', () => {
           res.writeHead(401, { 'content-type': 'application/json' });
           return res.end(JSON.stringify({ error: { message: 'Invalid API key' } }));
         }
+        if (model === 'hangs') {
+          // Accepts the request only after 1.5 s, like a queued, overloaded model.
+          return setTimeout(() => {
+            res.writeHead(503, { 'content-type': 'application/json' });
+            res.end('{"error":{"message":"high demand"}}');
+          }, 1500);
+        }
         if (model === 'overloaded') {
           res.writeHead(503, { 'content-type': 'application/json' });
           return res.end('{"error":{"message":"This model is currently experiencing high demand."}}');
@@ -92,6 +100,7 @@ describe('streamChat against a fake OpenAI-compatible provider', () => {
     });
   });
   afterAll(() => upstream.server.close());
+  beforeEach(() => resetModelHealth());
 
   const config = (model, extra) => ({ baseUrl: upstream.url, model, apiKey: 'secret', label: 'Fake', jsonMode: true, extraBody: {}, ...extra });
   const collect = async (gen) => {
@@ -123,6 +132,23 @@ describe('streamChat against a fake OpenAI-compatible provider', () => {
     const events = await collect(streamChat({ config: config('overloaded', { fallbackModels: ['ok'] }), messages: [] }));
     expect(events[0]).toEqual({ type: 'open', model: 'ok' });
     expect(requests.at(-1).json.model).toBe('ok');
+  });
+
+  it('skips a model that just failed, so later requests go straight to the fallback', async () => {
+    const cfg = config('overloaded', { fallbackModels: ['ok'], timeouts: { modelCooldownMs: 60_000 } });
+    await collect(streamChat({ config: cfg, messages: [] }));
+    const before = requests.length;
+    const events = await collect(streamChat({ config: cfg, messages: [] }));
+    expect(events[0]).toEqual({ type: 'open', model: 'ok' });
+    expect(requests.length - before).toBe(1); // no second wait on the overloaded model
+  });
+
+  it('stops waiting for a slow model when another one is available', async () => {
+    const started = Date.now();
+    const cfg = config('hangs', { fallbackModels: ['ok'], timeouts: { switchModelMs: 200 } });
+    const events = await collect(streamChat({ config: cfg, messages: [] }));
+    expect(events[0]).toEqual({ type: 'open', model: 'ok' });
+    expect(Date.now() - started).toBeLessThan(1200);
   });
 
   it('does not fall back on errors another model would not fix', async () => {
@@ -234,5 +260,13 @@ describe('rate limits', () => {
     for (const ip of ['1.1.1.1', '2.2.2.2', '3.3.3.3']) statuses.push((await post(ip)).status);
     server.server.close();
     expect(statuses).toEqual([400, 400, 429]);
+  });
+});
+
+describe('prompt', () => {
+  it('treats a short title as a topic to cover, not as notes', () => {
+    const [system] = buildGenerateMessages({ mode: 'flashcards', input: 'The French Revolution (1789-1799)', count: 5 });
+    expect(system.content).toMatch(/A topic: a short title/);
+    expect(system.content).toMatch(/Never make items that only restate the title/);
   });
 });
