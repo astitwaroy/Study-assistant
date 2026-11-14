@@ -10,7 +10,7 @@ import { rateLimit } from './rateLimit.js';
 export function createApp(config = loadConfig()) {
   const app = express();
   app.disable('x-powered-by');
-  app.set('trust proxy', 'loopback');
+  app.set('trust proxy', config.trustProxy);
 
   app.use('/api', express.json({ limit: '200kb' }));
 
@@ -18,7 +18,17 @@ export function createApp(config = loadConfig()) {
     res.json(publicConfig(config));
   });
 
-  app.post('/api/generate', rateLimit({ windowMs: 60_000, max: config.rateLimitPerMinute }), createGenerateHandler(config));
+  app.post(
+    '/api/generate',
+    rateLimit({ windowMs: 60_000, max: config.rateLimitPerMinute }),
+    rateLimit({
+      windowMs: 60_000,
+      max: config.globalRateLimitPerMinute,
+      key: () => 'everyone',
+      message: 'Recall is handling a lot of requests right now.',
+    }),
+    createGenerateHandler(config),
+  );
 
   app.use('/api', (_req, _res, next) => next(new AppError('not_found', 'No such API route.', { status: 404 })));
 

@@ -50,6 +50,18 @@ export const PRESETS = {
   },
 };
 
+/**
+ * Express "trust proxy": which X-Forwarded-For hops to believe when working
+ * out the visitor's IP. Locally there's no proxy; hosts like Render put one
+ * (or more) in front, so set TRUST_PROXY to the number of hops there.
+ */
+function parseTrustProxy(value) {
+  if (value === undefined || value === '') return 'loopback';
+  if (/^(true|false)$/i.test(value)) return /^true$/i.test(value);
+  if (/^\d+$/.test(value)) return Number(value);
+  return value; // e.g. "loopback, 10.0.0.0/8"
+}
+
 function parseBool(value, fallback) {
   if (value === undefined || value === '') return fallback;
   return /^(1|true|yes|on)$/i.test(String(value).trim());
@@ -83,6 +95,9 @@ export function loadConfig(env = process.env) {
     port: Number(env.PORT) || 8787,
     allowSimulate: parseBool(env.ALLOW_SIMULATE, !isProduction),
     rateLimitPerMinute: Number(env.RATE_LIMIT_PER_MINUTE) || 20,
+    // Ceiling across all visitors, so a public deploy can't burn through the key's quota.
+    globalRateLimitPerMinute: Number(env.GLOBAL_RATE_LIMIT_PER_MINUTE) || 60,
+    trustProxy: parseTrustProxy(env.TRUST_PROXY),
     timeouts: {
       // Thinking models can sit silently for a while before the first token.
       firstTokenMs: Number(env.LLM_FIRST_TOKEN_TIMEOUT_MS) || 45_000,

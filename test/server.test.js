@@ -187,3 +187,26 @@ describe('POST /api/generate (demo mode)', () => {
     expect(text).not.toContain('sk-very-secret');
   });
 });
+
+describe('rate limits', () => {
+  it('reads TRUST_PROXY for hosts behind a proxy', () => {
+    expect(loadConfig({}).trustProxy).toBe('loopback');
+    expect(loadConfig({ TRUST_PROXY: '1' }).trustProxy).toBe(1);
+    expect(loadConfig({ TRUST_PROXY: 'true' }).trustProxy).toBe(true);
+  });
+
+  it('caps requests across all visitors as well as per visitor', async () => {
+    const app = createApp(loadConfig({ RATE_LIMIT_PER_MINUTE: '100', GLOBAL_RATE_LIMIT_PER_MINUTE: '2', TRUST_PROXY: 'true' }));
+    const server = await listen(app);
+    const post = (ip) =>
+      fetch(`${server.url}/api/generate`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-forwarded-for': ip },
+        body: JSON.stringify({ mode: 'quiz' }), // invalid on purpose: limits run before validation
+      });
+    const statuses = [];
+    for (const ip of ['1.1.1.1', '2.2.2.2', '3.3.3.3']) statuses.push((await post(ip)).status);
+    server.server.close();
+    expect(statuses).toEqual([400, 400, 429]);
+  });
+});
