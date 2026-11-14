@@ -4,12 +4,13 @@
  * (see src/lib/errors.js); `message` is extra detail for the person.
  */
 export class AppError extends Error {
-  constructor(code, message, { status = 500, retryAfter, cause } = {}) {
+  constructor(code, message, { status = 500, retryAfter, cause, upstreamStatus } = {}) {
     super(message, { cause });
     this.name = 'AppError';
     this.code = code;
     this.status = status;
     this.retryAfter = retryAfter;
+    this.upstreamStatus = upstreamStatus; // the provider's own HTTP status, if any
   }
 
   toJSON() {
@@ -49,6 +50,12 @@ function parseRetryAfter(header) {
 
 /** Turns a non-2xx provider response into an AppError with a useful code. */
 export function errorFromProviderResponse(status, bodyText, headers, label) {
+  const error = classifyProviderResponse(status, bodyText, headers, label);
+  error.upstreamStatus = status;
+  return error;
+}
+
+function classifyProviderResponse(status, bodyText, headers, label) {
   const detail = providerMessage(bodyText);
   const lower = `${bodyText}`.toLowerCase();
 

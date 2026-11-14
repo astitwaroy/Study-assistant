@@ -60,7 +60,9 @@ export function CreateView({
       <footer className="create__footer">
         {info && !info.mock && (
           <p>
-            Questions are written by {info.label} ({info.model}). Check anything important against your notes.
+            Questions are written by {info.label} ({info.model}
+            {info.fallbackModels?.length > 0 && `, or ${info.fallbackModels.join(', ')} when it's busy`}). Check anything
+            important against your notes.
           </p>
         )}
       </footer>

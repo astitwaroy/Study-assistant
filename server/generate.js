@@ -70,7 +70,8 @@ export function createGenerateHandler(config) {
       if (!clientGone && !res.writableEnded) res.write(`${JSON.stringify(event)}\n`);
     };
 
-    send({ t: 'start', model: useMock ? `mock${request.simulate !== 'none' ? ` (${request.simulate})` : ''}` : config.model });
+    const answering = step.value?.model ?? config.model;
+    send({ t: 'start', model: useMock ? `mock${request.simulate !== 'none' ? ` (${request.simulate})` : ''}` : answering });
 
     let finishReason = null;
     try {

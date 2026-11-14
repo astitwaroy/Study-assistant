@@ -17,6 +17,9 @@ export const PRESETS = {
     // Gemini 3 models always "think" before answering; keep it short so the
     // first token arrives sooner.
     extraBody: { reasoning_effort: 'low' },
+    // Tried in order when the main model is overloaded, rate limited or gone.
+    // Free-tier quotas are per model, so this also helps when one runs out.
+    fallbackModels: ['gemini-flash-lite-latest'],
   },
   groq: {
     label: 'Groq',
@@ -62,6 +65,13 @@ function parseTrustProxy(value) {
   return value; // e.g. "loopback, 10.0.0.0/8"
 }
 
+/** "a, b" -> ["a", "b"]; "none" -> []; unset -> fallback. */
+function parseList(value, fallback) {
+  if (value === undefined) return fallback;
+  if (/^\s*(none|off)?\s*$/i.test(value)) return [];
+  return value.split(',').map((s) => s.trim()).filter(Boolean);
+}
+
 function parseBool(value, fallback) {
   if (value === undefined || value === '') return fallback;
   return /^(1|true|yes|on)$/i.test(String(value).trim());
@@ -89,6 +99,7 @@ export function loadConfig(env = process.env) {
     label: preset?.label ?? provider,
     baseUrl: (env.LLM_BASE_URL || preset?.baseUrl || '').replace(/\/+$/, ''),
     model: (env.LLM_MODEL || preset?.model || '').trim(),
+    fallbackModels: parseList(env.LLM_FALLBACK_MODELS, preset?.fallbackModels ?? []),
     apiKey,
     jsonMode: parseBool(env.LLM_JSON_MODE, true),
     extraBody: preset?.extraBody ?? {},
@@ -127,6 +138,7 @@ export function publicConfig(config) {
     provider: config.provider,
     label: config.label,
     model: config.model,
+    fallbackModels: config.provider === 'mock' ? [] : config.fallbackModels.filter((m) => m !== config.model),
     mock: config.provider === 'mock',
     simulate: config.allowSimulate,
     problem: config.problem,

@@ -36,12 +36,12 @@ cp .env.example .env
 | Ollama (local, free) | `ollama` | none | `llama3.2` (run `ollama pull llama3.2` first) |
 | Any OpenAI-compatible API | `custom` | as needed | set `LLM_BASE_URL` and `LLM_MODEL` |
 
-To use a different model, set `LLM_MODEL`. Some models reject JSON mode. When that happens, the server retries without it on its own, so you don't have to work out which ones do.
+To use a different model, set `LLM_MODEL`. Some models reject JSON mode. When that happens, the server retries without it on its own, so you don't have to work out which ones do. And if the model is overloaded or out of free quota, the server moves on to a fallback model before giving up: `gemini-flash-lite-latest` for Gemini, or whatever you list in `LLM_FALLBACK_MODELS`.
 
 The other scripts:
 
 ```bash
-npm test            # 130 unit, hook and component tests (Vitest)
+npm test            # 133 unit, hook and component tests (Vitest)
 npm run lint        # ESLint, including the React hooks rules
 npm run build       # production build into dist/
 npm run serve       # serve dist/ and the API from one Express process (port 8787)
@@ -145,6 +145,7 @@ LLMs don't follow a format perfectly every time. Here's what can go wrong, what 
 | Empty list | Its own empty state with **Try again** | `normalizeSet` |
 | Slow first token | After 10 s you get "Still working…" and a **Cancel** button. The server gives up after 45 s with no tokens | `useGeneration.js`, `generate.js` |
 | Stream stalls mid-answer | After 20 s of silence the server sends a `stalled` error. You can still study whatever arrived | `generate.js`, `ErrorPanel` |
+| Model overloaded (503) or out of free quota (429) | Usually nothing. Before anything has streamed, the server quietly tries the fallback model | `llm.js` `streamChat` |
 | Provider down, 5xx, bad key, unknown model, 429 | A specific message for each case. Retry is only offered when it can actually help, and a 429 shows a countdown | `server/errors.js`, `src/lib/errors.js` |
 | API server not running | "Can't reach the Recall server", plus a banner from the health check | `api.js`, `useServerHealth.js` |
 | A newer request starts while an old one is still running | The old request is aborted, **and** if its result shows up late anyway, it's ignored | `useGeneration.js` |

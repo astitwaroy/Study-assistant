@@ -37,7 +37,9 @@ describe('loadConfig', () => {
     expect(loadConfig({}).provider).toBe('mock');
   });
   it('defaults to Gemini when only a key is set', () => {
-    expect(loadConfig({ LLM_API_KEY: 'k' })).toMatchObject({ provider: 'gemini', problem: null });
+    expect(loadConfig({ LLM_API_KEY: 'k' })).toMatchObject({ provider: 'gemini', problem: null, fallbackModels: ['gemini-flash-lite-latest'] });
+    expect(loadConfig({ LLM_API_KEY: 'k', LLM_FALLBACK_MODELS: 'none' }).fallbackModels).toEqual([]);
+    expect(loadConfig({ LLM_API_KEY: 'k', LLM_FALLBACK_MODELS: 'a, b' }).fallbackModels).toEqual(['a', 'b']);
   });
   it('explains a missing key instead of crashing', () => {
     expect(loadConfig({ LLM_PROVIDER: 'groq' }).problem).toMatch(/LLM_API_KEY/);
@@ -64,6 +66,10 @@ describe('streamChat against a fake OpenAI-compatible provider', () => {
         if (model === 'bad-key') {
           res.writeHead(401, { 'content-type': 'application/json' });
           return res.end(JSON.stringify({ error: { message: 'Invalid API key' } }));
+        }
+        if (model === 'overloaded') {
+          res.writeHead(503, { 'content-type': 'application/json' });
+          return res.end('{"error":{"message":"This model is currently experiencing high demand."}}');
         }
         if (model === 'busy') {
           res.writeHead(429, { 'content-type': 'application/json', 'retry-after': '7' });
@@ -97,7 +103,7 @@ describe('streamChat against a fake OpenAI-compatible provider', () => {
   it('streams deltas, skips junk lines and reports the finish reason', async () => {
     const events = await collect(streamChat({ config: config('ok'), messages: [] }));
     expect(events).toEqual([
-      { type: 'open' },
+      { type: 'open', model: 'ok' },
       { type: 'delta', text: '{"items":' },
       { type: 'delta', text: '[]}' },
       { type: 'finish', reason: 'stop' },
@@ -109,8 +115,28 @@ describe('streamChat against a fake OpenAI-compatible provider', () => {
 
   it('retries without JSON mode when the model rejects it', async () => {
     const events = await collect(streamChat({ config: config('no-json-mode'), messages: [] }));
-    expect(events[0]).toEqual({ type: 'open' });
+    expect(events[0]).toEqual({ type: 'open', model: 'no-json-mode' });
     expect(requests.at(-1).json.response_format).toBeUndefined();
+  });
+
+  it('falls back to the next model when the first is overloaded, and says which answered', async () => {
+    const events = await collect(streamChat({ config: config('overloaded', { fallbackModels: ['ok'] }), messages: [] }));
+    expect(events[0]).toEqual({ type: 'open', model: 'ok' });
+    expect(requests.at(-1).json.model).toBe('ok');
+  });
+
+  it('does not fall back on errors another model would not fix', async () => {
+    const before = requests.length;
+    await expect(
+      collect(streamChat({ config: config('bad-key', { fallbackModels: ['ok'] }), messages: [] })),
+    ).rejects.toMatchObject({ code: 'auth' });
+    expect(requests.length - before).toBe(1);
+  });
+
+  it('reports the last error when every model fails', async () => {
+    await expect(
+      collect(streamChat({ config: config('overloaded', { fallbackModels: ['busy'] }), messages: [] })),
+    ).rejects.toMatchObject({ code: 'rate_limited' });
   });
 
   it('maps HTTP errors to error codes', async () => {
