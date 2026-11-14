@@ -19,6 +19,7 @@ export function CreateView({
   missingSetId,
   onOpenSet,
   onDeleteSet,
+  onImportSet,
   saveFailed,
 }) {
   const info = health.info;
@@ -54,7 +55,7 @@ export function CreateView({
 
       {info?.simulate && <SimulatePanel value={simulate} onChange={onSimulateChange} />}
 
-      <SavedSets sets={sets} onOpen={onOpenSet} onDelete={onDeleteSet} saveFailed={saveFailed} />
+      <SavedSets sets={sets} onOpen={onOpenSet} onDelete={onDeleteSet} onImport={onImportSet} saveFailed={saveFailed} />
 
       <footer className="create__footer">
         {info && !info.mock && (

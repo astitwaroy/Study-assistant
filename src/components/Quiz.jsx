@@ -1,9 +1,12 @@
-import { useEffect, useReducer, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useHotkeys } from '../hooks/useHotkeys.js';
-import { choiceLabel, isCorrect, newRound, optionOrders, quizReducer, score } from '../lib/quiz.js';
+import { useSavedReducer } from '../hooks/usePersistentState.js';
+import { quizKey } from '../hooks/useSavedSets.js';
+import { choiceLabel, correctLabel, isCorrect, newRound, optionOrders, quizReducer, restoreQuiz, score } from '../lib/quiz.js';
+import { itemText } from '../lib/schema.js';
 import { Progress } from './FlashcardDeck.jsx';
 import { KeyHints } from './KeyHints.jsx';
-import { ChoiceQuestion } from './QuizQuestion.jsx';
+import { ChoiceQuestion, TypedQuestion } from './QuizQuestion.jsx';
 
 /**
  * One renderer per question type. The model can mix types in one quiz, and
@@ -13,11 +16,21 @@ import { ChoiceQuestion } from './QuizQuestion.jsx';
 const QUESTION_RENDERERS = {
   mcq: ChoiceQuestion,
   true_false: ChoiceQuestion,
+  fill_blank: TypedQuestion,
 };
 
-export function Quiz({ set }) {
+/**
+ * The quiz round is saved as you go, so closing the tab and coming back
+ * resumes on the same question. `active` is false while another tab
+ * (the study guide) is showing, which turns the shortcuts off.
+ */
+export function Quiz({ set, active = true }) {
   const items = set.items;
-  const [quiz, dispatch] = useReducer(quizReducer, null, () => newRound(items, items.map((i) => i.id), {}));
+  const [quiz, dispatch, restored] = useSavedReducer(quizKey(set.id), set.version, quizReducer, {
+    restore: (saved) => restoreQuiz(saved, items, set.version),
+    init: () => newRound(items, items.map((i) => i.id), {}),
+  });
+  const [showResumed, setShowResumed] = useState(restored && (quiz.index > 0 || Object.keys(quiz.answers).length > 0));
   const nextRef = useRef(null);
 
   const item = items.find((i) => i.id === quiz.ids[quiz.index]);
@@ -30,9 +43,14 @@ export function Quiz({ set }) {
   }, [answered]);
 
   const choose = (value) => item && dispatch({ type: 'answer', id: item.id, answer: value });
-  const next = () => dispatch({ type: 'next', items });
-  const retake = (ids, keepHistory) =>
+  const next = () => {
+    setShowResumed(false);
+    dispatch({ type: 'next', items });
+  };
+  const retake = (ids, keepHistory) => {
+    setShowResumed(false);
     dispatch({ type: 'retake', items, ids, keepHistory, orders: optionOrders(items, ids, { shuffled: true }) });
+  };
 
   if (quiz.phase === 'summary') {
     return <Summary items={items} quiz={quiz} onRetake={retake} />;
@@ -57,12 +75,22 @@ export function Quiz({ set }) {
       </div>
       <Progress value={quiz.index + (answered ? 1 : 0)} max={quiz.ids.length} />
 
+      {showResumed && (
+        <p className="resumed" role="status">
+          Picked up where you left off.{' '}
+          <button type="button" className="link-button" onClick={() => retake(items.map((i) => i.id), false)}>
+            Start the quiz over
+          </button>
+        </p>
+      )}
+
       <Question
         key={`${quiz.round}-${item.id}`}
         item={item}
         order={quiz.orders[item.id]}
         answer={answer}
         onChoose={choose}
+        onOverride={() => dispatch({ type: 'override', id: item.id })}
         number={quiz.index + 1}
       />
 
@@ -74,12 +102,19 @@ export function Quiz({ set }) {
         </div>
       )}
 
-      <QuizHotkeys item={item} order={quiz.orders[item.id]} answered={answered} onChoose={choose} onNext={next} />
+      <QuizHotkeys
+        item={item}
+        order={quiz.orders[item.id]}
+        answered={answered}
+        active={active}
+        onChoose={choose}
+        onNext={next}
+      />
     </section>
   );
 }
 
-function QuizHotkeys({ item, order, answered, onChoose, onNext }) {
+function QuizHotkeys({ item, order, answered, active, onChoose, onNext }) {
   const bindings = {};
   order.forEach((choiceIndex, position) => {
     const pick = () => !answered && onChoose(item.type === 'mcq' ? choiceIndex : choiceIndex === 0);
@@ -92,24 +127,23 @@ function QuizHotkeys({ item, order, answered, onChoose, onNext }) {
   }
   bindings.Enter = () => answered && onNext();
   bindings.ArrowRight = () => answered && onNext();
-  useHotkeys(bindings);
+  useHotkeys(bindings, active);
 
-  return (
-    <KeyHints
-      hints={
-        item.type === 'mcq'
-          ? [
-              ['1–' + order.length, 'choose'],
-              ['Enter', 'next'],
-            ]
-          : [
-              ['T', 'true'],
-              ['F', 'false'],
-              ['Enter', 'next'],
-            ]
-      }
-    />
-  );
+  const hints = {
+    mcq: [
+      ['1–' + order.length, 'choose'],
+      ['Enter', 'next'],
+    ],
+    true_false: [
+      ['T', 'true'],
+      ['F', 'false'],
+      ['Enter', 'next'],
+    ],
+    fill_blank: [
+      ['Enter', answered ? 'next' : 'check'],
+    ],
+  };
+  return <KeyHints hints={hints[item.type]} />;
 }
 
 function Summary({ items, quiz, onRetake }) {
@@ -159,12 +193,10 @@ function Summary({ items, quiz, onRetake }) {
           <ol className="missed__list">
             {missed.map((item) => (
               <li key={item.id} className="missed__item">
-                <p className="missed__question">{item.question ?? item.statement}</p>
+                <p className="missed__question">{itemText(item)}</p>
                 <p className="missed__answers">
                   <span className="missed__yours">You said: {choiceLabel(item, quiz.answers[item.id])}</span>
-                  <span className="missed__right">
-                    Answer: {choiceLabel(item, item.type === 'mcq' ? item.answerIndex : item.answer)}
-                  </span>
+                  <span className="missed__right">Answer: {correctLabel(item)}</span>
                 </p>
                 {item.explanation && <p className="missed__why">{item.explanation}</p>}
               </li>

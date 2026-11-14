@@ -20,6 +20,9 @@
   --wrong-bg: #f8e3dd;
   --info-bg: #eef3f7;
   --warn-bg: #fbf1d4;
+  /* Charts: one series, categorical slot 1 from the data-viz palette. */
+  --series-1: #2a78d6;
+  --grid: #dfe5ea;
   --shadow: 0 1px 0 rgba(29, 42, 54, 0.06), 0 6px 18px -10px rgba(29, 42, 54, 0.35);
 
   --font-ui: 'Atkinson Hyperlegible', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -58,6 +61,8 @@
   --wrong-bg: #3a2420;
   --info-bg: #1b2530;
   --warn-bg: #352d17;
+  --series-1: #3987e5;
+  --grid: #2b3743;
   --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 8px 22px -12px rgba(0, 0, 0, 0.8);
   color-scheme: dark;
 }
@@ -76,6 +81,7 @@ html {
 body {
   margin: 0;
   min-height: 100vh;
+  overflow-x: clip; /* a card being swiped off-screen mustn't widen the page */
   background: var(--desk);
   color: var(--ink);
   font-family: var(--font-ui);

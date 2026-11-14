@@ -87,3 +87,37 @@ describe('restoreSet', () => {
     expect(restored.items).toEqual([{ id: 'keep', type: 'flashcard', front: 'a', back: 'b' }]);
   });
 });
+
+describe('typed questions', () => {
+  const typedSet = {
+    id: 's_typed',
+    mode: 'quiz',
+    title: 'Cells',
+    version: 1,
+    items: [{ id: 't1', type: 'fill_blank', prompt: 'The Calvin cycle uses ATP and ____.', answers: ['NADPH'], explanation: 'From the light reactions.' }],
+  };
+
+  it('treats a near miss as "almost" until the person counts it', async () => {
+    const user = userEvent.setup();
+    render(<Quiz set={typedSet} />);
+    await user.type(screen.getByLabelText('Your answer'), 'NADH{Enter}');
+    expect(screen.getByText(/Almost. The expected answer is "NADPH"/)).toBeInTheDocument();
+    expect(screen.getByText('0 right')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /It was a typo/ }));
+    expect(screen.getByText('Counted as right.')).toBeInTheDocument();
+    expect(screen.getByText('1 right')).toBeInTheDocument();
+  });
+
+  it('resumes on the same question after a remount', async () => {
+    const user = userEvent.setup();
+    const twoQuestions = { ...quizSet, id: 's_resume' };
+    const { unmount } = render(<Quiz set={twoQuestions} />);
+    await user.click(screen.getByRole('button', { name: /Mitochondria/ }));
+    await user.click(screen.getByRole('button', { name: 'Next question' }));
+    unmount();
+    render(<Quiz set={twoQuestions} />);
+    expect(screen.getByText(/Picked up where you left off/)).toBeInTheDocument();
+    expect(screen.getByText('Question 2 of 2')).toBeInTheDocument();
+  });
+});

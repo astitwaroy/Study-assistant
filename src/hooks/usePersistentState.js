@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useReducer, useState } from 'react';
 
 /**
  * Reads and writes localStorage without ever throwing: storage can be full,
@@ -24,6 +24,18 @@ export const storage = {
   remove(key) {
     try {
       localStorage.removeItem(key);
+    } catch {
+      // nothing useful to do
+    }
+  },
+  removePrefix(prefix) {
+    try {
+      const keys = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith(prefix)) keys.push(key);
+      }
+      keys.forEach((key) => localStorage.removeItem(key));
     } catch {
       // nothing useful to do
     }
@@ -54,4 +66,35 @@ export function usePersistentState(key, fallback, validate = (v) => v) {
   }, [key, state]);
 
   return [state, setState];
+}
+
+/**
+ * useReducer whose state is saved as { version, state } and restored on
+ * mount. `restore(saved)` must validate what it gets and return a state or
+ * null; anything that doesn't fit the current data starts fresh via `init()`.
+ *
+ * @returns [state, dispatch, restored] where `restored` says whether saved
+ *          state was picked up (so the UI can say "picked up where you left off").
+ */
+export function useSavedReducer(key, version, reducer, { restore, init }) {
+  const [initial] = useState(() => {
+    const restored = safeRestore(storage.read(key, null), restore);
+    return { state: restored ?? init(), restored: Boolean(restored) };
+  });
+  const [state, dispatch] = useReducer(reducer, initial.state);
+
+  useEffect(() => {
+    storage.write(key, { version, state });
+  }, [key, version, state]);
+
+  return [state, dispatch, initial.restored];
+}
+
+function safeRestore(saved, restore) {
+  if (!saved) return null;
+  try {
+    return restore(saved);
+  } catch {
+    return null;
+  }
 }

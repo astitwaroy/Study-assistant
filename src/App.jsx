@@ -74,6 +74,7 @@ export default function App() {
         title: outcome.title,
         sourceText: request.input,
         items: outcome.items,
+        guide: outcome.guide ?? [],
         createdAt: now,
         updatedAt: now,
         version: 1,
@@ -141,6 +142,7 @@ export default function App() {
             missingSetId={view.name === 'study' ? view.setId : null}
             onOpenSet={handleOpenSaved}
             onDeleteSet={deleteSet}
+            onImportSet={saveSet}
             saveFailed={saveFailed}
           />
         )}

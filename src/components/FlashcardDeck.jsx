@@ -1,15 +1,25 @@
-import { useReducer, useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useHotkeys } from '../hooks/useHotkeys.js';
-import { usePersistentState } from '../hooks/usePersistentState.js';
-import { progressKey } from '../hooks/useSavedSets.js';
-import { countStatuses, deckReducer, newPass, validateStatuses } from '../lib/deck.js';
+import { usePersistentState, useSavedReducer } from '../hooks/usePersistentState.js';
+import { deckKey, progressKey } from '../hooks/useSavedSets.js';
+import { useSwipe } from '../hooks/useSwipe.js';
+import { countStatuses, deckReducer, newPass, restorePass, validateStatuses } from '../lib/deck.js';
 import { shuffle } from '../lib/quiz.js';
 import { KeyHints } from './KeyHints.jsx';
 
-export function FlashcardDeck({ set }) {
+/**
+ * Which cards you know and where you are in the deck are both saved, so
+ * coming back to a set picks up on the same card. `active` is false while
+ * another tab is showing, which turns the shortcuts off.
+ */
+export function FlashcardDeck({ set, active = true }) {
   const allIds = set.items.map((item) => item.id);
   const [statuses, setStatuses] = usePersistentState(progressKey(set.id), {}, validateStatuses);
-  const [deck, dispatch] = useReducer(deckReducer, allIds, (ids) => newPass(ids));
+  const [deck, dispatch, restored] = useSavedReducer(deckKey(set.id), set.version, deckReducer, {
+    restore: (saved) => restorePass(saved, allIds, set.version),
+    init: () => newPass(allIds),
+  });
+  const [showResumed, setShowResumed] = useState(restored && deck.index > 0 && deck.index < deck.order.length);
   const flipRef = useRef(null);
 
   const card = set.items.find((item) => item.id === deck.order[deck.index]);
@@ -19,13 +29,17 @@ export function FlashcardDeck({ set }) {
 
   const mark = (status) => {
     if (!card) return;
+    setShowResumed(false);
     setStatuses((current) => ({ ...current, [card.id]: status }));
     dispatch({ type: 'next' });
   };
   const start = (ids, kind) => {
+    setShowResumed(false);
     dispatch({ type: 'start', ids, kind });
     requestAnimationFrame(() => flipRef.current?.focus());
   };
+  const swipe = useSwipe({ onSwipeRight: () => mark('known'), onSwipeLeft: () => mark('learning') });
+  const lean = Math.max(-1, Math.min(1, swipe.dx / swipe.threshold)); // -1 … 1
 
   useHotkeys(
     {
@@ -36,7 +50,7 @@ export function FlashcardDeck({ set }) {
       1: () => mark('learning'),
       2: () => mark('known'),
     },
-    !done,
+    active && !done,
   );
 
   if (done) {
@@ -100,10 +114,28 @@ export function FlashcardDeck({ set }) {
       </div>
       <Progress value={deck.index} max={deck.order.length} />
 
+      {showResumed && (
+        <p className="resumed" role="status">
+          Picked up at card {deck.index + 1}.{' '}
+          <button type="button" className="link-button" onClick={() => start(allIds, 'all')}>
+            Start from the first card
+          </button>
+        </p>
+      )}
+
+      <div className="swipe-zone">
+        <span className="swipe-stamp swipe-stamp--learning" style={{ opacity: Math.max(0, -lean) }} aria-hidden="true">
+          Still learning
+        </span>
+        <span className="swipe-stamp swipe-stamp--known" style={{ opacity: Math.max(0, lean) }} aria-hidden="true">
+          Got it
+        </span>
       <button
         ref={flipRef}
         type="button"
-        className="flip"
+        className={`flip${swipe.dx ? ' flip--dragging' : ''}`}
+        style={swipe.dx ? { transform: `translateX(${swipe.dx}px) rotate(${swipe.dx / 28}deg)` } : undefined}
+        {...swipe.handlers}
         data-flipped={deck.flipped}
         onClick={() => dispatch({ type: 'flip' })}
         aria-label={deck.flipped ? `Answer: ${card.back}. Select to see the question.` : `Question: ${card.front}. Select to see the answer.`}
@@ -119,6 +151,8 @@ export function FlashcardDeck({ set }) {
           </span>
         </span>
       </button>
+      </div>
+      <p className="swipe-hint">Tap the card to flip it. Swipe right if you know it, left if you're still learning.</p>
       {statuses[card.id] && (
         <p className="deck__status">
           Last time: {statuses[card.id] === 'known' ? 'got it' : 'still learning'}

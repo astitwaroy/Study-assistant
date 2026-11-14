@@ -307,3 +307,34 @@
     display: none;
   }
 }
+
+.saved__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.6rem;
+}
+.saved__top .saved__heading {
+  margin-bottom: 0;
+}
+.saved__progress {
+  margin-left: 0.6rem;
+  padding: 0 0.4rem;
+  border-radius: 4px;
+  background: var(--right-bg);
+  color: var(--right);
+  font-size: var(--step--1);
+}
+.saved__message {
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-control);
+  font-size: 0.95rem;
+}
+.saved__message--done {
+  background: var(--right-bg);
+}
+.saved__message--warn {
+  background: var(--warn-bg);
+}
