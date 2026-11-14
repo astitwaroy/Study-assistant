@@ -27,7 +27,7 @@ export function CreateView({
     <div className="create">
       <div className="create__intro">
         <h1 className="create__title">Make flashcards or a quiz from your notes</h1>
-        <p className="create__lede">Paste what you're studying or name a topic. Then practise, and drill the ones you miss.</p>
+        <p className="create__lede">Paste or upload what you're studying, or just name a topic. Then practise, and drill the ones you miss.</p>
       </div>
 
       {missingSetId && (

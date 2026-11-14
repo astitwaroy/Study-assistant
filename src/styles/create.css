@@ -338,3 +338,65 @@
 .saved__message--warn {
   background: var(--warn-bg);
 }
+
+/* ---------- uploaded file ---------- */
+.file-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-top: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--card);
+  font-size: 0.95rem;
+}
+.file-bar--error {
+  border-left: 4px solid var(--wrong);
+}
+.file-bar__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  width: 100%;
+}
+.file-bar__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.15rem 0.45rem;
+  min-width: 0;
+}
+.file-bar__icon {
+  flex: none;
+  color: var(--ink-soft);
+}
+.file-bar__name {
+  overflow-wrap: anywhere;
+}
+.file-bar__meta {
+  color: var(--ink-soft);
+}
+.file-bar__range {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+}
+.file-bar__range select {
+  min-height: 2.25rem;
+  padding: 0.2rem 0.4rem;
+  border: 1.5px solid var(--ink);
+  border-radius: var(--radius-control);
+  background: var(--card);
+  font-variant-numeric: tabular-nums;
+}
+.file-bar__note {
+  width: 100%;
+  color: var(--ink-soft);
+}

@@ -5,7 +5,7 @@
   "description": "Paste notes or a topic, get flashcards or a quiz from an LLM, and drill the ones you miss.",
   "type": "module",
   "engines": {
-    "node": ">=22.12"
+    "node": ">=22.13"
   },
   "scripts": {
     "start": "concurrently -k -n api,web -c cyan,magenta \"npm:dev:server\" \"npm:dev:client\"",
@@ -22,6 +22,8 @@
     "@fontsource/courier-prime": "^5.3.0",
     "dotenv": "^18.0.10",
     "express": "^5.3.0",
+    "jszip": "^3.10.2",
+    "pdfjs-dist": "^6.5.438",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },
