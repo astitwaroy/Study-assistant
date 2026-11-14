@@ -54,7 +54,7 @@ export async function* mockStream({ request, signal, scenario = 'none' }) {
 function buildPayload({ mode, input, count }) {
   if (/photosynth/i.test(input)) {
     const items = mode === 'quiz' ? PHOTOSYNTHESIS.quiz : PHOTOSYNTHESIS.flashcards.map((c) => ({ type: 'flashcard', ...c }));
-    return { status: 'ok', title: PHOTOSYNTHESIS.title, items: items.slice(0, count) };
+    return { status: 'ok', title: PHOTOSYNTHESIS.title, items: items.slice(0, count), guide: PHOTOSYNTHESIS.guide };
   }
 
   const facts = extractFacts(input);
@@ -67,7 +67,9 @@ function buildPayload({ mode, input, count }) {
   }
 
   const items = facts.slice(0, count).map((fact, i) => (mode === 'quiz' ? quizItem(fact, i, facts) : flashcard(fact)));
-  return { status: 'ok', title: guessTitle(input), items };
+  // The stand-in can't summarise, so its "key points" are simply the first sentences.
+  const guide = [{ type: 'checklist', title: 'Key points', items: facts.slice(0, 6).map((f) => f.sentence) }];
+  return { status: 'ok', title: guessTitle(input), items, guide };
 }
 
 function buildRefinePayload({ mode, input, refine }) {
@@ -87,8 +89,9 @@ function buildRefinePayload({ mode, input, refine }) {
     extras = unused.map((fact, i) => (mode === 'quiz' ? quizItem(fact, i, facts) : flashcard(fact)));
   }
 
-  const existing = new Set(refine.items.map((item) => (item.front || item.question || item.statement || '').toLowerCase()));
-  const fresh = extras.filter((item) => !existing.has((item.front || item.question || item.statement).toLowerCase()));
+  const text = (item) => (item.front || item.question || item.statement || item.prompt || '').toLowerCase();
+  const existing = new Set(refine.items.map(text));
+  const fresh = extras.filter((item) => !existing.has(text(item)));
 
   if (fresh.length === 0) {
     return {
@@ -129,6 +132,14 @@ function flashcard({ sentence, keyword }) {
 }
 
 function quizItem(fact, index, facts) {
+  if (index % 5 === 2) {
+    return {
+      type: 'fill_blank',
+      prompt: blank(fact.sentence, fact.keyword).replace('_____', '____'),
+      answers: [fact.keyword],
+      explanation: `The notes say: "${fact.sentence}"`,
+    };
+  }
   const others = [...new Set(facts.map((f) => f.keyword).filter((k) => k.toLowerCase() !== fact.keyword.toLowerCase()))];
   if (index % 4 === 3 || others.length < 3) {
     const makeFalse = index % 2 === 1 && others.length > 0;
@@ -205,8 +216,17 @@ function wrongShape(payload, mode) {
   if (payload.status !== 'ok' || !payload.items) return payload;
   const items = payload.items;
 
+  const guide = [
+    { kind: 'Bar chart', title: 'Molecules in the equation', data: [{ name: 'CO2', count: '6' }, { name: 'Glucose', count: 'one' }, ['O2', 6]] },
+    { type: 'video', url: 'https://example.com/photosynthesis.mp4' },
+    { type: 'key points', points: ['Light energy becomes chemical energy.', { text: 'It happens in chloroplasts.' }, 'Light energy becomes chemical energy.'] },
+  ];
+
   if (mode === 'quiz') {
     const mangled = items.map((item, i) => {
+      if (item.type === 'fill_blank') {
+        return { type: 'Fill in the blank', sentence: item.prompt, answer: item.answers[0], why: item.explanation };
+      }
       if (item.type === 'true_false') {
         return { kind: 'True/False', question: item.statement, correct: String(item.answer), why: item.explanation };
       }
@@ -233,7 +253,8 @@ function wrongShape(payload, mode) {
     });
     mangled.push({ type: 'mcq', question: 'Which option is correct?', options: ['Only one option'], answerIndex: 0 });
     mangled.push({ type: 'mcq', question: items[0]?.question ?? 'Broken', options: ['A', 'B', 'C', 'D'], answerIndex: 7 });
-    return { topic: payload.title, questions: mangled };
+    mangled.push({ type: 'fill_blank', prompt: 'A blank with no answer: ____.' });
+    return { topic: payload.title, questions: mangled, study_guide: guide };
   }
 
   const mangled = items.map((item, i) =>
@@ -242,7 +263,7 @@ function wrongShape(payload, mode) {
   mangled.push({ question: 'A card with no answer', answer: '' });
   mangled.push({ question: items[0]?.front ?? 'Duplicate', answer: items[0]?.back ?? 'Duplicate' });
   mangled.push('just a string, not a card');
-  return { topic: payload.title, cards: mangled };
+  return { topic: payload.title, cards: mangled, study_guide: guide };
 }
 
 /* ---------- helpers ---------- */

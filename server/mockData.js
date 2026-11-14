@@ -35,6 +35,12 @@ export const PHOTOSYNTHESIS = {
       explanation: 'Photolysis splits water into hydrogen ions, electrons and oxygen, and the oxygen is released.',
     },
     {
+      type: 'fill_blank',
+      prompt: 'During the light-dependent reactions, water is split in a process called ____.',
+      answers: ['photolysis', 'photolysis of water'],
+      explanation: 'Photolysis splits water using light energy, which releases oxygen as a by-product.',
+    },
+    {
       type: 'mcq',
       question: 'What does the enzyme RuBisCO do?',
       options: ['Splits water molecules', 'Fixes CO₂ onto RuBP', 'Makes ATP', 'Absorbs red light'],
@@ -66,6 +72,12 @@ export const PHOTOSYNTHESIS = {
       statement: 'Photosynthesis converts chemical energy into light energy.',
       answer: false,
       explanation: 'It is the other way round: light energy is converted into chemical energy stored in glucose.',
+    },
+    {
+      type: 'fill_blank',
+      prompt: 'The pores on the underside of a leaf that let CO₂ in are called ____.',
+      answers: ['stomata', 'stoma', 'stomates'],
+      explanation: 'Stomata let CO₂ in and O₂ and water vapour out; guard cells open and close them.',
     },
     {
       type: 'mcq',
@@ -100,6 +112,43 @@ export const PHOTOSYNTHESIS = {
       options: ['Sucrose', 'Glucose', 'Starch', 'Fructose'],
       answerIndex: 1,
       explanation: 'The equation produces one glucose molecule (C₆H₁₂O₆) for every six CO₂ molecules.',
+    },
+  ],
+  guide: [
+    {
+      type: 'checklist',
+      title: 'Key points',
+      items: [
+        'Photosynthesis turns light energy into chemical energy stored in glucose.',
+        "It happens in chloroplasts, mostly in the leaf's mesophyll cells.",
+        'The light-dependent reactions in the thylakoids split water, release O₂, and make ATP and NADPH.',
+        'The Calvin cycle in the stroma uses ATP and NADPH to turn CO₂ into G3P.',
+        'RuBisCO fixes CO₂ onto RuBP.',
+        'Light intensity, CO₂ concentration and temperature limit the rate.',
+      ],
+    },
+    {
+      type: 'chart',
+      title: 'Molecules in the balanced equation',
+      unit: 'molecules',
+      data: [
+        { label: 'CO₂ used', value: 6 },
+        { label: 'H₂O used', value: 6 },
+        { label: 'Glucose made', value: 1 },
+        { label: 'O₂ released', value: 6 },
+      ],
+    },
+    {
+      type: 'timeline',
+      title: 'From light to sugar',
+      events: [
+        { when: 'Step 1', what: 'Chlorophyll in the thylakoids absorbs red and blue light.' },
+        { when: 'Step 2', what: 'Water is split (photolysis), releasing oxygen.' },
+        { when: 'Step 3', what: 'The captured energy is stored as ATP and NADPH.' },
+        { when: 'Step 4', what: 'In the stroma, RuBisCO fixes CO₂ onto RuBP.' },
+        { when: 'Step 5', what: 'ATP and NADPH reduce the fixed carbon to G3P.' },
+        { when: 'Step 6', what: 'G3P is used to build glucose and other molecules.' },
+      ],
     },
   ],
   extraFlashcards: [

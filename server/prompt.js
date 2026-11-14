@@ -9,13 +9,24 @@ const FLASHCARD_SCHEMA = `Each item:
 - back: the answer. Under 300 characters. Plain text, no markdown.
 - One idea per card. Don't repeat a fact on two cards.`;
 
-const QUIZ_SCHEMA = `Use two item types, about three multiple-choice for every true/false:
+const QUIZ_SCHEMA = `Mix three item types: about 6 multiple-choice, 2 true/false and 2 fill-in-the-blank in every 10:
 {"type": "mcq", "question": string, "options": [string, string, string, string], "answerIndex": integer, "explanation": string}
 {"type": "true_false", "statement": string, "answer": boolean, "explanation": string}
+{"type": "fill_blank", "prompt": string, "answers": [string, ...], "explanation": string}
 - mcq: exactly 4 distinct, plausible options; exactly one is correct.
 - answerIndex is the 0-based position of the correct option in "options".
 - Don't use "All of the above" or "None of the above". Don't prefix options with letters.
+- fill_blank: a sentence with the missing part shown as "____". The missing part is one to three words.
+  "answers" lists every spelling or wording that should count as correct, most common first.
 - explanation: one or two sentences saying why the answer is right.`;
+
+const GUIDE_SCHEMA = `"guide" is a short study guide shown next to the practice items: a list of 1 to 3 blocks.
+- Always include one checklist of the key points to know:
+  {"type": "checklist", "title": "Key points", "items": [string, ...]}   (3 to 8 short points)
+- Include a chart ONLY if the notes or topic contain at least two comparable numbers. Never invent numbers:
+  {"type": "chart", "title": string, "unit": string, "data": [{"label": string, "value": number}, ...]}   (2 to 8 bars, values >= 0)
+- Include a timeline ONLY if the material is chronological or an ordered process:
+  {"type": "timeline", "title": string, "events": [{"when": string, "what": string}, ...]}   (2 to 10 events; "when" is a date or a step like "Step 1")`;
 
 const SHARED_RULES = `Rules:
 - Reply with one JSON object only. No markdown, no code fences, no text before or after it.
@@ -37,11 +48,12 @@ export function buildGenerateMessages({ mode, input, count, strict }) {
   const noun = mode === 'quiz' ? 'quiz questions' : 'flashcards';
   const system = [
     `You are Recall, a study assistant that turns a student's notes or a topic into ${noun}.`,
-    `Reply with this JSON shape:
-{"status": "ok", "title": string, "items": [item, ...]}
+    `Reply with this JSON shape, keys in this order:
+{"status": "ok", "title": string, "items": [item, ...], "guide": [block, ...]}
 - title: 2 to 6 words naming the topic.
 - items: exactly ${count} items.`,
     itemSchema(mode),
+    GUIDE_SCHEMA,
     SHARED_RULES,
     strict
       ? 'Your previous reply could not be parsed. Follow the JSON shape exactly and double-check every comma, quote and bracket.'

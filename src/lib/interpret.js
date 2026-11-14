@@ -1,6 +1,6 @@
 import { extractCompleteElements, extractTitle, parseModelJson } from './parse.js';
 import { applyOps } from './refine.js';
-import { normalizeItem, normalizeItems, normalizeSet } from './schema.js';
+import { normalizeGuide, normalizeItem, normalizeItems, normalizeSet } from './schema.js';
 
 /**
  * The full pipeline from raw model text to something the UI can render:
@@ -53,7 +53,10 @@ export function salvageSet(text, mode) {
   if (elements.length === 0) return null;
   const { items, dropped } = normalizeItems(elements, mode);
   if (items.length === 0) return null;
-  return { kind: 'ok', title: extractTitle(text) ?? 'Untitled set', items, dropped };
+  // The guide comes after the items, so it's often what got cut off. Keep any complete blocks.
+  const guideElements = extractCompleteElements(text, ['guide', 'study_guide']);
+  const guide = guideElements.length ? normalizeGuide(guideElements).blocks : [];
+  return { kind: 'ok', title: extractTitle(text) ?? 'Untitled set', items, guide, dropped };
 }
 
 /** What to show while the answer is still streaming in. */

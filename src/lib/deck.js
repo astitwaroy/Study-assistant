@@ -40,3 +40,15 @@ export function validateStatuses(value) {
   }
   return clean;
 }
+
+/** Rebuilds a saved pass through the deck, or null if it no longer fits the set. */
+export function restorePass(saved, ids, version) {
+  if (!saved || typeof saved !== 'object' || saved.version !== version) return null;
+  const { order, index, kind } = saved.state ?? {};
+  const known = new Set(ids);
+  if (!Array.isArray(order) || order.length === 0 || new Set(order).size !== order.length) return null;
+  if (!order.every((id) => known.has(id))) return null;
+  if (!Number.isInteger(index) || index < 0 || index > order.length) return null;
+  if (kind !== 'all' && kind !== 'review') return null;
+  return { order, index, flipped: false, kind };
+}
