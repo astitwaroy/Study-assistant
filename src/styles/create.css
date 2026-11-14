@@ -1,0 +1,309 @@
+/* ---------- create view ---------- */
+.create__intro {
+  margin: 1.5rem 0 1.5rem;
+}
+.create__title {
+  max-width: 20ch;
+  font-size: var(--step-3);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+.create__lede {
+  max-width: 52ch;
+  margin-top: 0.6rem;
+  color: var(--ink-soft);
+  font-size: var(--step-1);
+  line-height: 1.4;
+}
+.create__footer {
+  margin-top: 2.5rem;
+  color: var(--ink-faint);
+  font-size: var(--step--1);
+}
+
+.notes-form__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-top: 0.75rem;
+}
+.samples {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+.samples__label {
+  color: var(--ink-soft);
+  font-size: var(--step--1);
+  margin-right: 0.15rem;
+}
+.counter {
+  margin-left: auto;
+  color: var(--ink-faint);
+  font-size: var(--step--1);
+  font-variant-numeric: tabular-nums;
+}
+.counter--over {
+  color: var(--wrong);
+  font-weight: 700;
+}
+
+.notes-form__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+.notes-form__submit {
+  margin-left: auto;
+  min-width: 11rem;
+}
+
+/* Segmented control: a radio group whose checked option is "highlighted". */
+.segmented {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.segmented__legend,
+.count-select > span {
+  display: block;
+  margin-bottom: 0.3rem;
+  padding: 0;
+  color: var(--ink-soft);
+  font-size: var(--step--1);
+}
+.segmented__track {
+  display: inline-flex;
+  padding: 3px;
+  border: 1.5px solid var(--ink);
+  border-radius: var(--radius-control);
+  background: var(--card);
+}
+.segmented__option {
+  position: relative;
+}
+.segmented__option input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  margin: 0;
+  cursor: pointer;
+}
+.segmented__option span {
+  display: block;
+  padding: 0.45rem 1rem;
+  border-radius: 4px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.segmented__option input:checked + span {
+  background: var(--highlight);
+  color: var(--on-highlight);
+}
+.segmented__option input:focus-visible + span {
+  outline: 3px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.count-select select {
+  min-height: 2.75rem;
+  padding: 0.4rem 2.2rem 0.4rem 0.75rem;
+  border: 1.5px solid var(--ink);
+  border-radius: var(--radius-control);
+  background: var(--card)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%237a8896' stroke-width='2'/%3E%3C/svg%3E")
+    no-repeat right 0.8rem center;
+  appearance: none;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* ---------- generation status ---------- */
+.status {
+  margin-top: 1.5rem;
+}
+.status:empty {
+  display: none;
+}
+
+.running__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.running__line {
+  font-weight: 700;
+}
+.running__note {
+  margin-top: 0.5rem;
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+}
+.running__title {
+  margin-top: 1rem;
+  font-family: var(--font-card);
+  font-size: var(--step-1);
+}
+
+.stack {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  gap: 0.75rem;
+  margin: 0.85rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.stack__card {
+  animation: deal 260ms cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+.stack__card--pending {
+  opacity: 0.55;
+  box-shadow: none;
+  outline: 1.5px dashed var(--line);
+  outline-offset: -1.5px;
+  animation: none;
+}
+@keyframes deal {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) rotate(-1.5deg);
+  }
+}
+.typing {
+  display: inline-block;
+  width: 0.55em;
+  height: 1.05em;
+  vertical-align: -0.15em;
+  background: var(--ink-faint);
+  animation: blink 1s steps(1) infinite;
+}
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* ---------- failure simulator ---------- */
+.simulate {
+  margin-top: 2rem;
+  padding: 0.75rem 1rem;
+  border: 1.5px dashed var(--line);
+  border-radius: var(--radius-control);
+  font-size: 0.95rem;
+}
+.simulate summary {
+  cursor: pointer;
+  font-weight: 700;
+  width: fit-content;
+}
+.simulate__field {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-top: 0.75rem;
+}
+.simulate__field select {
+  min-height: 2.5rem;
+  padding: 0.3rem 0.5rem;
+  border: 1.5px solid var(--ink);
+  border-radius: var(--radius-control);
+  background: var(--card);
+}
+.simulate__hint {
+  margin-top: 0.5rem;
+  color: var(--ink-soft);
+  font-size: var(--step--1);
+}
+
+/* ---------- saved sets ---------- */
+.saved {
+  margin-top: 2.5rem;
+}
+.saved__heading {
+  font-size: var(--step-1);
+  margin-bottom: 0.6rem;
+}
+.saved__empty {
+  color: var(--ink-soft);
+}
+.saved__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--line);
+}
+.saved__row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--line);
+}
+.saved__open {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: 'title date' 'meta date';
+  flex: 1;
+  min-width: 0;
+  padding: 0.7rem 0.5rem 0.7rem 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .saved__open:hover .saved__title {
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+}
+.saved__title {
+  grid-area: title;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.saved__meta {
+  grid-area: meta;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+.saved__date {
+  grid-area: date;
+  align-self: center;
+  color: var(--ink-faint);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 34rem) {
+  .create__intro {
+    margin-top: 0.75rem;
+  }
+  .create__title {
+    font-size: var(--step-2);
+  }
+  .create__lede {
+    font-size: var(--step-0);
+  }
+  .notes-form__controls {
+    gap: 0.75rem;
+  }
+  .notes-form__submit {
+    width: 100%;
+    margin-left: 0;
+  }
+  .counter {
+    margin-left: 0;
+  }
+  .topbar__theme-label {
+    display: none;
+  }
+}

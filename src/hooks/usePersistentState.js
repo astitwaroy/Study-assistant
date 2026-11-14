@@ -1,0 +1,57 @@
+import { useEffect, useState } from 'react';
+
+/**
+ * Reads and writes localStorage without ever throwing: storage can be full,
+ * disabled (some private modes), or hold data from an older version.
+ */
+export const storage = {
+  read(key, fallback) {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw === null ? fallback : JSON.parse(raw);
+    } catch {
+      return fallback;
+    }
+  },
+  write(key, value) {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+      return true;
+    } catch {
+      return false;
+    }
+  },
+  remove(key) {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // nothing useful to do
+    }
+  },
+};
+
+/**
+ * useState that survives reloads. `validate` receives whatever was stored and
+ * returns the value to use (or undefined for the fallback), because stored
+ * data is as untrusted as model output.
+ *
+ * The key is read once on mount. Components that need a different key are
+ * remounted (see `key={set.id}` in StudyView).
+ */
+export function usePersistentState(key, fallback, validate = (v) => v) {
+  const [state, setState] = useState(() => {
+    const stored = storage.read(key, undefined);
+    if (stored === undefined) return fallback;
+    try {
+      return validate(stored) ?? fallback;
+    } catch {
+      return fallback;
+    }
+  });
+
+  useEffect(() => {
+    storage.write(key, state);
+  }, [key, state]);
+
+  return [state, setState];
+}

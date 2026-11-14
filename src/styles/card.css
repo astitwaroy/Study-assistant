@@ -1,0 +1,124 @@
+/* ---------- the index card ----------
+   The one bold idea in the design. A head strip with the red rule under it,
+   then a body ruled in blue. The body's line-height equals the line gap, so
+   typed text sits on the rules like a real card. */
+.index-card {
+  --gap: 1.75rem;
+  --pad-x: 1.25rem;
+  display: block;
+  position: relative;
+  border-radius: var(--radius-card);
+  background: var(--card);
+  box-shadow: var(--shadow);
+  color: var(--ink);
+  text-align: left;
+}
+
+.index-card__head {
+  display: block;
+  padding: 0.85rem var(--pad-x) 0.35rem;
+  border-bottom: 2px solid var(--rule-red);
+  color: var(--ink-soft);
+  font-family: var(--font-card);
+  font-size: 0.85rem;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.index-card__body {
+  display: block;
+  padding: 0 var(--pad-x) var(--gap);
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(var(--gap) - 1px),
+    var(--rule-blue) calc(var(--gap) - 1px),
+    var(--rule-blue) var(--gap)
+  );
+  background-attachment: local;
+  /* Pull the rules up so they sit just under the baseline, not mid-gap. */
+  background-position: 0 calc(var(--gap) * -0.2);
+  font-family: var(--font-card);
+  font-size: 1.05rem;
+  line-height: var(--gap);
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+
+/* The notes field is itself a card you type on. */
+.index-card--input .index-card__head {
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--ink);
+  cursor: text;
+}
+.notes-form__textarea {
+  width: 100%;
+  min-height: calc(var(--gap) * 9);
+  max-height: 60vh;
+  margin: 0;
+  border: 0;
+  border-radius: 0 0 var(--radius-card) var(--radius-card);
+  background-color: transparent;
+  resize: vertical;
+  white-space: pre-wrap;
+}
+.notes-form__textarea::placeholder {
+  color: var(--ink-faint);
+}
+.notes-form__textarea:focus-visible {
+  outline: none;
+}
+.index-card--input:focus-within {
+  box-shadow: var(--shadow), 0 0 0 3px var(--focus);
+}
+
+/* Study cards: bigger type, room to breathe, 5:3 like a real card on wide screens. */
+.index-card--study {
+  --gap: 2.25rem;
+  --pad-x: 1.75rem;
+}
+.index-card--study .index-card__head {
+  padding-top: 1rem;
+}
+.index-card__text {
+  min-height: calc(var(--gap) * 5);
+  padding-top: 0;
+  font-size: var(--step-1);
+}
+
+/* Small cards that pile up while the answer streams in. */
+.index-card--mini {
+  --gap: 1.45rem;
+  --pad-x: 0.85rem;
+}
+.index-card--mini .index-card__head {
+  padding: 0.35rem var(--pad-x) 0.15rem;
+  font-size: 0.75rem;
+}
+.index-card--mini .index-card__body {
+  padding-bottom: 0.3rem;
+  font-size: 0.85rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: normal;
+}
+
+@media (max-width: 34rem) {
+  .index-card {
+    --pad-x: 1rem;
+  }
+  .index-card--study {
+    --gap: 2rem;
+    --pad-x: 1.1rem;
+  }
+  .index-card__text {
+    min-height: calc(var(--gap) * 6);
+    font-size: 1.1rem;
+  }
+}
