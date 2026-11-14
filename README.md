@@ -49,7 +49,7 @@ npm run serve       # serve dist/ and the API from one Express process (port 878
 
 ### Deploying
 
-**Live demo:** _(add your Render URL here)_
+**Live demo:** https://recall-study-assistant-4f7k.onrender.com (free plan, so the first visit after a quiet spell takes about a minute to wake up)
 
 The repo comes with a Render Blueprint (`render.yaml`), so the built app and the API run together as one free web service:
 
