@@ -2,7 +2,7 @@
 
 A study assistant that turns your notes into flashcards and quizzes.
 
-Paste in your notes, or just type a topic. Recall asks an LLM to write flashcards or a quiz from it. You flip through the cards, take the quiz, and keep retesting the ones you got wrong until there's nothing left to retest.
+Paste in your notes, upload a PDF, slides or a Word file, or just type a topic. Recall asks an LLM to write flashcards or a quiz from it. You flip through the cards, take the quiz, and keep retesting the ones you got wrong until there's nothing left to retest.
 
 It's not a chatbot, and that's on purpose. The model hands back JSON. The app checks every item on its own, and React builds the flip cards, the multiple-choice, true/false and fill-in-the-blank questions, the study guide (a checklist, a chart, a timeline), the scores and the retest rounds from that data. If you read through the code, you'll notice most of it isn't about the happy path. It's about what to do when the model's answer comes back broken, half finished, slow, or not at all.
 
@@ -41,7 +41,7 @@ To use a different model, set `LLM_MODEL`. Some models reject JSON mode. When th
 The other scripts:
 
 ```bash
-npm test            # 136 unit, hook and component tests (Vitest)
+npm test            # 156 unit, hook and component tests (Vitest)
 npm run lint        # ESLint, including the React hooks rules
 npm run build       # production build into dist/
 npm run serve       # serve dist/ and the API from one Express process (port 8787)
@@ -67,7 +67,7 @@ Any other Node host works the same way: build with `npm run build`, start with `
 
 ## Using it
 
-1. Paste your notes, pick one of the samples, or type a topic.
+1. Paste your notes, pick one of the samples, or type a topic. You can also **upload a file** (PDF, PowerPoint `.pptx`, Word `.docx` or plain text) with the button on the notes card, or just drop it onto the card. The file is read right there in your browser and never uploaded anywhere. Its text lands in the notes box, where you can check or trim it first. If a long PDF or deck doesn't fit in one set, Recall takes as many pages or slides as fit and lets you pick a different range.
 2. Choose **Flashcards** or **Quiz**, pick how many you want, then hit **Make flashcards** (or Ctrl/Cmd + Enter). Items show up one by one as they stream in.
 3. **Flashcards:** click the card or press Space to flip it. Mark each one **Still learning** (1) or **Got it** (2). On a phone you can swipe instead: right for got it, left for still learning. When you reach the end, you can go back through just the ones you're still learning.
 4. **Quiz:** answer by clicking, with the number keys, or with A to D (T/F for true/false). Fill-in-the-blank questions you type. After each answer you see the correct option and the model's explanation. At the end, **Retake the ones you missed** gives you another round. The options get reshuffled every time, so you end up learning the answer and not where it sits on the screen.
@@ -111,12 +111,14 @@ src/
   lib/schema.js      Validate and normalise every item; the model-to-UI contract
   lib/interpret.js   Pipeline: parse → normalise → salvage
   lib/refine.js      Apply follow-up edits (add/update/remove ops)
+  lib/fileText.js    Read PDFs (pdf.js), PowerPoint and Word files into text, in the browser
   lib/quiz.js, deck.js   Pure reducers for quiz rounds and flashcard passes, typed-answer grading,
                          and checks on saved sessions
   hooks/useGeneration.js Request lifecycle, retries, stale-response protection
   hooks/usePersistentState.js  localStorage state and reducers that survive a reload
   hooks/useSavedSets.js  Saved sets, progress summaries, download and import
   hooks/useSwipe.js      Swipe to grade on touch screens
+  hooks/useFileUpload.js Reading a chosen or dropped file into the notes box, pages to use
   components/        Views and UI pieces
 test/                Vitest suites for all of the above
 ```
@@ -150,6 +152,9 @@ LLMs don't follow a format perfectly every time. Here's what can go wrong, what 
 | API server not running | "Can't reach the Recall server", plus a banner from the health check | `api.js`, `useServerHealth.js` |
 | A newer request starts while an old one is still running | The old request is aborted, **and** if its result shows up late anyway, it's ignored | `useGeneration.js` |
 | A follow-up edit finishes after the set has changed | It isn't applied, and you're told | `RefinePanel.jsx` |
+| An uploaded file it can't read: a scanned PDF (pictures, no text), a password, an old `.ppt` or `.doc`, a damaged file | A message that says which it is and what to do. Your notes aren't touched | `fileText.js` `readStudyFile` |
+| An uploaded file with more text than one set can use | It takes as many pages or slides as fit, says so, and lets you pick a different range | `fileText.js` `partsThatFit` |
+| Running headers, footers and page numbers in a PDF | Stripped before they can turn into questions | `fileText.js` `dropRepeatedLines` |
 | Corrupt or outdated data in localStorage | Re-checked with the same normaliser. Anything bad is skipped | `useSavedSets.js` `restoreSet` |
 | A saved quiz or deck position that no longer fits, because the set was edited since | It starts fresh instead of resuming into questions that are gone | `restoreQuiz`, `restorePass` |
 | An imported file that's broken, huge or not a Recall set | A specific message. Usable items are kept and the rest are counted as skipped | `useSavedSets.js` `importSet` |
@@ -195,6 +200,7 @@ All five are in.
 - The streaming preview rescans the whole response on every chunk. That's fine for the few KB a set usually takes. It wouldn't be for very long outputs.
 - The rate limits live in memory, per process. Running several server instances would need a shared store.
 - Saved sets live in one browser's localStorage. No accounts, no sync. Download and Import are how you move a set.
+- Uploads only use a file's text. Images, charts and diagrams are ignored, scanned PDFs can't be read (there's no OCR), and old `.ppt` and `.doc` files need saving as `.pptx` or `.docx` first.
 - Keyboard use has been tested. Screen reader use hasn't been tested properly yet.
 - JSON mode and streaming support vary by provider and model. The server falls back when JSON mode is rejected, but a model that ignores the format altogether ends up leaning on the retry and salvage paths.
 
@@ -205,7 +211,7 @@ All five are in.
 - Let follow-up edits change the study guide too.
 - Export to Anki or CSV.
 - Playwright end-to-end tests for the failure scenarios, running in CI.
-- PDF and image input.
+- OCR for scanned PDFs, and sending the images in a file to models that can read them.
 
 ## How I used AI
 
