@@ -19,6 +19,7 @@
  *   { id, type: 'checklist', title, items: [{ id, text }] }
  *   { id, type: 'chart', title, unit?, data: [{ label, value: number >= 0 }] }
  *   { id, type: 'timeline', title, events: [{ when, what }] }
+ *   { id, type: 'concept_map', title, nodes: [{ id, label, detail? }], edges: [{ from, to, label? }] }
  */
 
 export const MODES = ['flashcards', 'quiz'];
@@ -38,7 +39,12 @@ export const LIMITS = {
   blockTitle: 80,
   checklistItem: 200,
   chartLabel: 60,
-  maxGuideBlocks: 4,
+  maxGuideBlocks: 5,
+  conceptLabel: 40,
+  conceptDetail: 200,
+  edgeLabel: 30,
+  maxConcepts: 14,
+  maxLinks: 24,
 };
 
 const TYPE_ALIASES = {
@@ -328,6 +334,13 @@ const BLOCK_ALIASES = {
   sequence: 'timeline',
   steps: 'timeline',
   process: 'timeline',
+  concept_map: 'concept_map',
+  conceptmap: 'concept_map',
+  concepts: 'concept_map',
+  mind_map: 'concept_map',
+  mindmap: 'concept_map',
+  graph: 'concept_map',
+  knowledge_graph: 'concept_map',
 };
 
 /** "1,200", "45%", "3.5 kg" -> number; anything else -> null. Never invents a value. */
@@ -403,6 +416,69 @@ function normalizeTimeline(raw) {
   return ok({ type: 'timeline', title: cleanText(raw.title, LIMITS.blockTitle) ?? 'Timeline', events: events.slice(0, 15) });
 }
 
+const slug = (text) =>
+  text
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, '-')
+    .replace(/^-+|-+$/g, '') || 'concept';
+
+/**
+ * Concepts and the links between them. Links may name their ends by id or
+ * by label (models do both); a link to a concept that doesn't exist is
+ * dropped rather than inventing the concept.
+ */
+function normalizeConceptMap(raw) {
+  const rawNodes = first(raw, ['nodes', 'concepts', 'items']);
+  const rawEdges = first(raw, ['edges', 'links', 'relations', 'relationships', 'connections']);
+  if (!Array.isArray(rawNodes)) return fail('A concept map had no list of concepts.');
+
+  const nodes = [];
+  const byKey = new Map(); // lowercased id or label -> node id
+  for (const entry of rawNodes) {
+    const label = cleanText(entry && typeof entry === 'object' ? first(entry, ['label', 'name', 'title', 'concept']) : entry, LIMITS.conceptLabel);
+    if (!label || byKey.has(label.toLowerCase())) continue;
+    if (nodes.length >= LIMITS.maxConcepts) break;
+    let id = cleanText(entry && typeof entry === 'object' ? entry.id : null, 60) ?? slug(label);
+    if (nodes.some((n) => n.id === id)) id = `${id}-${nodes.length + 1}`;
+    const detail = entry && typeof entry === 'object' ? cleanText(first(entry, ['detail', 'description', 'definition', 'summary']), LIMITS.conceptDetail) : null;
+    nodes.push({ id, label, ...(detail && { detail }) });
+    byKey.set(label.toLowerCase(), id);
+    byKey.set(String(id).toLowerCase(), id);
+  }
+  if (nodes.length < 3) return fail('A concept map had fewer than three concepts.');
+
+  const edges = [];
+  const seen = new Set();
+  let skipped = 0;
+  for (const entry of Array.isArray(rawEdges) ? rawEdges : []) {
+    if (!entry || typeof entry !== 'object') {
+      skipped += 1;
+      continue;
+    }
+    const end = (value) => (value === undefined || value === null ? undefined : byKey.get(String(value).trim().toLowerCase()));
+    const from = end(first(entry, ['from', 'source', 'start', 'a']));
+    const to = end(first(entry, ['to', 'target', 'end', 'b']));
+    const key = `${from}>${to}`;
+    if (!from || !to || from === to || seen.has(key)) {
+      skipped += 1;
+      continue;
+    }
+    if (edges.length >= LIMITS.maxLinks) break;
+    seen.add(key);
+    const label = cleanText(first(entry, ['label', 'relation', 'type', 'verb']), LIMITS.edgeLabel);
+    edges.push({ from, to, ...(label && { label }) });
+  }
+  if (edges.length < 2) return fail('A concept map had fewer than two usable links between its concepts.');
+
+  return ok({
+    type: 'concept_map',
+    title: cleanText(raw.title, LIMITS.blockTitle) ?? 'How it connects',
+    nodes,
+    edges,
+    ...(skipped && { skipped }),
+  });
+}
+
 /** Validates one study-guide block. */
 export function normalizeBlock(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return fail('A study-guide block was not an object.');
@@ -411,6 +487,7 @@ export function normalizeBlock(raw) {
   if (type === 'checklist') return normalizeChecklist(raw);
   if (type === 'chart') return normalizeChart(raw);
   if (type === 'timeline') return normalizeTimeline(raw);
+  if (type === 'concept_map') return normalizeConceptMap(raw);
   return fail(`The study guide had a block type Recall can't show${declared ? ` ("${declared.slice(0, 30)}")` : ''}.`);
 }
 

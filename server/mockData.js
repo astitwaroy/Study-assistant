@@ -116,6 +116,36 @@ export const PHOTOSYNTHESIS = {
   ],
   guide: [
     {
+      type: 'concept_map',
+      title: 'How photosynthesis fits together',
+      nodes: [
+        { id: 'photosynthesis', label: 'Photosynthesis', detail: 'Turns light energy into chemical energy stored in glucose.' },
+        { id: 'chloroplast', label: 'Chloroplast', detail: 'The organelle where photosynthesis happens.' },
+        { id: 'light', label: 'Light-dependent reactions', detail: 'The first stage: captures light energy in the thylakoids.' },
+        { id: 'thylakoid', label: 'Thylakoid membranes', detail: 'Membranes inside the chloroplast where chlorophyll absorbs light.' },
+        { id: 'calvin', label: 'Calvin cycle', detail: 'The second stage: fixes CO₂ into sugar in the stroma.' },
+        { id: 'stroma', label: 'Stroma', detail: 'The fluid around the thylakoids where the Calvin cycle runs.' },
+        { id: 'carriers', label: 'ATP and NADPH', detail: 'Energy carriers made by the light reactions and used by the Calvin cycle.' },
+        { id: 'rubisco', label: 'RuBisCO', detail: 'The enzyme that fixes CO₂ onto RuBP.' },
+        { id: 'oxygen', label: 'Oxygen', detail: 'Released as a by-product when water is split.' },
+        { id: 'glucose', label: 'Glucose', detail: 'The sugar that stores the captured energy.' },
+      ],
+      edges: [
+        { from: 'photosynthesis', to: 'chloroplast', label: 'happens in' },
+        { from: 'photosynthesis', to: 'light', label: 'starts with' },
+        { from: 'photosynthesis', to: 'calvin', label: 'finishes with' },
+        { from: 'chloroplast', to: 'thylakoid', label: 'contains' },
+        { from: 'chloroplast', to: 'stroma', label: 'contains' },
+        { from: 'light', to: 'thylakoid', label: 'happen in' },
+        { from: 'light', to: 'carriers', label: 'make' },
+        { from: 'light', to: 'oxygen', label: 'release' },
+        { from: 'carriers', to: 'calvin', label: 'power' },
+        { from: 'calvin', to: 'stroma', label: 'happens in' },
+        { from: 'rubisco', to: 'calvin', label: 'drives' },
+        { from: 'calvin', to: 'glucose', label: 'builds' },
+      ],
+    },
+    {
       type: 'checklist',
       title: 'Key points',
       items: [

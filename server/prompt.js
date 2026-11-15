@@ -20,7 +20,11 @@ const QUIZ_SCHEMA = `Mix three item types: about 6 multiple-choice, 2 true/false
   "answers" lists every spelling or wording that should count as correct, most common first.
 - explanation: one or two sentences saying why the answer is right.`;
 
-const GUIDE_SCHEMA = `"guide" is a short study guide shown next to the practice items: a list of 1 to 3 blocks.
+const GUIDE_SCHEMA = `"guide" is a short study guide shown next to the practice items: a list of 1 to 4 blocks.
+- Include a concept map when the material has at least four related ideas (it usually does):
+  {"type": "concept_map", "title": "How it connects", "nodes": [{"id": string, "label": string, "detail": string}, ...], "edges": [{"from": node id, "to": node id, "label": string}, ...]}
+  4 to 10 nodes; "label" is 1 to 4 words, "detail" is one short sentence. Every node has at least one edge.
+  Edge labels are short verb phrases read from "from" to "to", like "happens in", "produces", "is a type of".
 - Always include one checklist of the key points to know:
   {"type": "checklist", "title": "Key points", "items": [string, ...]}   (3 to 8 short points)
 - Include a chart ONLY if the notes or topic contain at least two comparable numbers. Never invent numbers:

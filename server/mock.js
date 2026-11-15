@@ -220,6 +220,18 @@ function wrongShape(payload, mode) {
     { kind: 'Bar chart', title: 'Molecules in the equation', data: [{ name: 'CO2', count: '6' }, { name: 'Glucose', count: 'one' }, ['O2', 6]] },
     { type: 'video', url: 'https://example.com/photosynthesis.mp4' },
     { type: 'key points', points: ['Light energy becomes chemical energy.', { text: 'It happens in chloroplasts.' }, 'Light energy becomes chemical energy.'] },
+    {
+      // Renamed keys, ends given by label instead of id, a link to a concept that doesn't exist, a self-link.
+      type: 'Mind map',
+      title: 'How it connects',
+      concepts: [{ name: 'Photosynthesis' }, { name: 'Chloroplast', description: 'Where it happens.' }, 'Glucose', { name: 'chloroplast' }],
+      links: [
+        { source: 'Photosynthesis', target: 'Chloroplast', relation: 'happens in' },
+        { source: 'photosynthesis', target: 'glucose', relation: 'makes' },
+        { source: 'Photosynthesis', target: 'Mitochondria', relation: 'feeds' },
+        { source: 'Glucose', target: 'Glucose' },
+      ],
+    },
   ];
 
   if (mode === 'quiz') {
