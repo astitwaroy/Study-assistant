@@ -723,3 +723,261 @@
     display: block;
   }
 }
+
+/* ---------- concept map ----------
+   Concepts are tiny index cards on dotted paper; links are pencil-grey
+   arrows with their verb written along them. Picking a concept marks it
+   with the highlighter, like the current answer elsewhere. */
+.cmap__stage {
+  position: relative;
+  height: 27rem;
+  margin: 0 -1.25rem;
+  overflow: hidden;
+  border-block: 1px solid var(--grid);
+  background: var(--info-bg);
+  cursor: grab;
+  touch-action: pan-y; /* one finger scrolls the page on a phone; concepts themselves drag */
+  user-select: none;
+  -webkit-user-select: none;
+}
+.cmap__stage--dragging,
+.cmap__stage:active {
+  cursor: grabbing;
+}
+.cmap__svg {
+  display: block;
+}
+.cmap__dot {
+  fill: var(--line);
+  opacity: 0.6;
+}
+.cmap__link {
+  fill: none;
+  stroke: var(--ink-faint);
+  stroke-width: 1.5;
+}
+.cmap__link--on {
+  stroke: var(--ink);
+  stroke-width: 2;
+}
+.cmap__link--off {
+  opacity: 0.25;
+}
+.cmap__arrow {
+  fill: var(--ink-faint);
+}
+.cmap__arrow--on {
+  fill: var(--ink);
+}
+.cmap__link-label {
+  font-family: var(--font-card);
+  font-size: 11px;
+  fill: var(--ink-soft);
+  paint-order: stroke;
+  stroke: var(--info-bg);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+.cmap__link-label--on {
+  fill: var(--ink);
+  font-weight: 700;
+}
+.cmap__node {
+  cursor: pointer;
+  touch-action: none;
+  outline: none;
+}
+.cmap__node--dragging {
+  cursor: grabbing;
+}
+.cmap__card {
+  fill: var(--card);
+  stroke: var(--line);
+  stroke-width: 1;
+  filter: drop-shadow(0 1px 1.5px rgba(29, 42, 54, 0.18));
+}
+.cmap__rule {
+  stroke: var(--rule-red);
+  stroke-width: 1;
+}
+.cmap__label {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  fill: var(--ink);
+  pointer-events: none;
+}
+.cmap__pin {
+  fill: var(--rule-red);
+}
+.cmap__node--near .cmap__card {
+  stroke: var(--ink);
+  stroke-width: 1.5;
+}
+.cmap__node--picked .cmap__card {
+  fill: var(--highlight);
+  stroke: var(--ink);
+  stroke-width: 1.5;
+}
+.cmap__node--picked .cmap__label {
+  fill: var(--on-highlight);
+  font-weight: 700;
+}
+.cmap__node--picked .cmap__rule {
+  stroke: transparent;
+}
+.cmap__node--dim {
+  opacity: 0.35;
+}
+.cmap__node:focus-visible .cmap__card {
+  stroke: var(--focus);
+  stroke-width: 3;
+}
+@media (hover: hover) {
+  .cmap__node:hover .cmap__card {
+    stroke: var(--ink);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cmap__node,
+  .cmap__link {
+    transition: opacity 150ms ease;
+  }
+}
+:root[data-theme='dark'] .cmap__card {
+  filter: none;
+}
+
+.cmap__bar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.6rem;
+}
+.cmap__controls {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0.5rem;
+}
+.cmap__zoom {
+  display: flex;
+  border: 1.5px solid var(--ink);
+  border-radius: var(--radius-control);
+  background: var(--card);
+  overflow: hidden;
+}
+.cmap__zoom-button {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.25rem;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  cursor: pointer;
+}
+.cmap__zoom-button + .cmap__zoom-button {
+  border-left: 1px solid var(--line);
+}
+.cmap__zoom-button:disabled {
+  color: var(--ink-faint);
+  cursor: default;
+}
+.cmap__zoom-button:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: -3px;
+}
+@media (hover: hover) {
+  .cmap__zoom-button:not(:disabled):hover {
+    background: var(--info-bg);
+  }
+}
+.cmap__hint {
+  max-width: 34rem;
+  color: var(--ink-faint);
+  font-size: var(--step--1);
+}
+
+.cmap__detail {
+  margin-top: 1rem;
+}
+.cmap__empty {
+  color: var(--ink-soft);
+}
+.cmap__picked {
+  display: grid;
+  gap: 0.35rem;
+}
+.cmap__picked-title {
+  justify-self: start;
+  padding: 0 0.3rem;
+  margin-left: -0.3rem;
+  background: var(--highlight);
+  color: var(--on-highlight);
+  font-size: var(--step-1);
+}
+.cmap__picked-detail {
+  color: var(--ink);
+}
+.cmap__subhead {
+  margin: 0.75rem 0 0;
+  color: var(--ink-soft);
+  font-size: var(--step--1);
+  font-weight: 700;
+}
+.cmap__count {
+  font-weight: 400;
+}
+.cmap__links,
+.cmap__mentions,
+.cmap-list__links {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+.cmap__links li,
+.cmap__mentions li,
+.cmap-list__links li {
+  margin: 0.2rem 0;
+}
+.cmap__verb {
+  font-family: var(--font-card);
+  color: var(--ink-soft);
+}
+.cmap__self {
+  font-weight: 700;
+}
+.cmap__mentions li {
+  font-family: var(--font-card);
+}
+.cmap__more,
+.cmap__none {
+  color: var(--ink-soft);
+}
+.cmap__mentions .cmap__more {
+  font-family: var(--font-ui);
+  list-style: none;
+}
+.cmap-list__concepts {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0.25rem 0 0;
+}
+.cmap-list__concepts dt {
+  font-weight: 700;
+}
+.cmap-list__concepts dd {
+  margin: 0;
+  color: var(--ink-soft);
+}
+
+@media (max-width: 34rem) {
+  .cmap__stage {
+    height: 31rem;
+  }
+  .cmap__bar {
+    flex-direction: column-reverse;
+    gap: 0.5rem;
+  }
+}

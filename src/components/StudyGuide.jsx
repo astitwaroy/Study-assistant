@@ -1,6 +1,7 @@
 import { useId, useState } from 'react';
 import { usePersistentState } from '../hooks/usePersistentState.js';
 import { guideKey } from '../hooks/useSavedSets.js';
+import { ConceptMapBlock } from './ConceptMap.jsx';
 
 /**
  * The study guide the model returns next to the practice items. Each block
@@ -11,6 +12,7 @@ const BLOCK_RENDERERS = {
   checklist: ChecklistBlock,
   chart: ChartBlock,
   timeline: TimelineBlock,
+  concept_map: ConceptMapBlock,
 };
 
 export function StudyGuide({ set }) {
@@ -18,7 +20,7 @@ export function StudyGuide({ set }) {
     <div className="guide">
       {set.guide.map((block) => {
         const Block = BLOCK_RENDERERS[block.type];
-        return Block ? <Block key={block.id} block={block} setId={set.id} /> : null;
+        return Block ? <Block key={block.id} block={block} setId={set.id} items={set.items} /> : null;
       })}
       <p className="guide__note">Written by the model from your notes. Check anything important against the source.</p>
     </div>
