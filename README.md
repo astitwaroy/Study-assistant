@@ -4,7 +4,7 @@ A study assistant that turns your notes into flashcards and quizzes.
 
 Paste in your notes, upload a PDF, slides or a Word file, or just type a topic. Recall asks an LLM to write flashcards or a quiz from it. You flip through the cards, take the quiz, and keep retesting the ones you got wrong until there's nothing left to retest.
 
-It's not a chatbot, and that's on purpose. The model hands back JSON. The app checks every item on its own, and React builds the flip cards, the multiple-choice, true/false and fill-in-the-blank questions, the study guide (a checklist, a chart, a timeline), the scores and the retest rounds from that data. If you read through the code, you'll notice most of it isn't about the happy path. It's about what to do when the model's answer comes back broken, half finished, slow, or not at all.
+It's not a chatbot, and that's on purpose. The model hands back JSON. The app checks every item on its own, and React builds the flip cards, the multiple-choice, true/false and fill-in-the-blank questions, the study guide (a concept map, a checklist, a chart, a timeline), the scores and the retest rounds from that data. If you read through the code, you'll notice most of it isn't about the happy path. It's about what to do when the model's answer comes back broken, half finished, slow, or not at all.
 
 <!-- Add a screenshot or GIF here, e.g. docs/demo.gif -->
 
@@ -71,7 +71,7 @@ Any other Node host works the same way: build with `npm run build`, start with `
 2. Choose **Flashcards** or **Quiz**, pick how many you want, then hit **Make flashcards** (or Ctrl/Cmd + Enter). Items show up one by one as they stream in.
 3. **Flashcards:** click the card or press Space to flip it. Mark each one **Still learning** (1) or **Got it** (2). On a phone you can swipe instead: right for got it, left for still learning. When you reach the end, you can go back through just the ones you're still learning.
 4. **Quiz:** answer by clicking, with the number keys, or with A to D (T/F for true/false). Fill-in-the-blank questions you type. After each answer you see the correct option and the model's explanation. At the end, **Retake the ones you missed** gives you another round. The options get reshuffled every time, so you end up learning the answer and not where it sits on the screen.
-5. **Study guide** is the second tab. It has the key points as a checklist you can tick off and, when the material calls for it, a chart of the numbers in your notes and a timeline of events or steps.
+5. **Study guide** is the second tab. It starts with a **concept map** of how the main ideas connect. Drag a concept to move it (it stays where you drop it, and the others make room), drag the paper to look around, and zoom with pinch, Ctrl + scroll or the buttons. Click a concept to see what it links to and which of your flashcards or questions mention it. With a keyboard, arrow keys move between concepts and Enter picks one. **Show as list** gives the same thing as text. Below the map are the key points as a checklist you can tick off and, when the material calls for it, a chart of the numbers in your notes and a timeline of events or steps.
 6. **Change this set** lets you send a follow-up like "add 3 harder questions on the Calvin cycle". Instead of starting over, the model sends back edits to the set you already have, and you can undo them.
 7. Everything saves as you go: your sets, which cards you know, where you are in a deck or quiz, and your checklist ticks. Open a set from **Your sets** and it picks up where you left off. **Download** saves a set as a file, and **Import a set** loads it back, in this browser or another one.
 
@@ -89,7 +89,7 @@ NotesForm ─▶ useGeneration.run() ─▶ POST /api/generate ─▶ validate r
               ─▶ interpretSet() (at the end)
                     parseModelJson ─▶ normalizeSet ─▶ ok | insufficient | empty | invalid
                     │                   ├─ items: flashcard | mcq | true_false | fill_blank
-                    │                   └─ guide: checklist | chart | timeline
+                    │                   └─ guide: concept_map | checklist | chart | timeline
                     └─ if that fails: salvage complete items (and guide blocks) from the raw text
                 ▼
           StudyView ─┬─ FlashcardDeck | Quiz      (a renderer per item type)
@@ -112,6 +112,8 @@ src/
   lib/interpret.js   Pipeline: parse → normalise → salvage
   lib/refine.js      Apply follow-up edits (add/update/remove ops)
   lib/fileText.js    Read PDFs (pdf.js), PowerPoint and Word files into text, in the browser
+  lib/forceLayout.js The concept map's force simulation, written from scratch (no d3)
+  lib/conceptMap.js  Picking the best starting layout, label placement, zoom maths
   lib/quiz.js, deck.js   Pure reducers for quiz rounds and flashcard passes, typed-answer grading,
                          and checks on saved sessions
   hooks/useGeneration.js Request lifecycle, retries, stale-response protection
@@ -141,6 +143,7 @@ LLMs don't follow a format perfectly every time. Here's what can go wrong, what 
 | Quiz items in flashcard mode | Turned into cards | `schema.js` `asFlashcard` |
 | A block type Recall doesn't know (say, "video") | That block is dropped and listed. The rest of the set still works | `schema.js` `normalizeBlock` |
 | Chart values that aren't numbers ("lots", "about 6") | Those bars are left out and the chart says how many. Fewer than two numbers, negatives or all zeros drop the chart. A number is never guessed | `schema.js` `toNumber`, `normalizeChart` |
+| Concept map links that point at concepts that aren't there, link a concept to itself, or repeat | Those links are dropped and the map says how many. Ends can be named by id or by label. Fewer than three concepts or two usable links drops the map | `normalizeConceptMap` |
 | Study guide missing, broken or cut off | The flashcards and questions aren't affected. Any complete guide blocks are kept | `normalizeGuide`, `salvageSet` |
 | Typed answer one letter off | "Almost". It isn't counted as right on its own, because NADH isn't NADPH. You decide whether it was a typo | `quiz.js` `gradeTyped` |
 | Model says the notes aren't enough | A specific "not enough here" screen with the model's reason | `status: "insufficient"` in the prompt |
@@ -180,7 +183,16 @@ When the server runs with `npm run serve` or `ALLOW_SIMULATE=false`, the panel i
 
 All five are in.
 
-**Different block types.** One answer from the model can hold seven kinds of block, and each has its own renderer. The practice items are flashcards, multiple-choice, true/false and typed fill-in-the-blank questions (`QUESTION_RENDERERS` in `Quiz.jsx`). The study guide has a checklist of key points you can tick off, a bar chart of numbers from your notes, and a timeline of events or steps (`BLOCK_RENDERERS` in `StudyGuide.jsx`). The chart comes with a table view and shows each value on hover or focus. The model only adds a chart or a timeline when the material calls for one. Unknown or broken blocks get rejected in `schema.js` before React ever sees them.
+**Different block types.** One answer from the model can hold eight kinds of block, and each has its own renderer. The practice items are flashcards, multiple-choice, true/false and typed fill-in-the-blank questions (`QUESTION_RENDERERS` in `Quiz.jsx`). The study guide has an interactive concept map (more on that below), a checklist of key points you can tick off, a bar chart of numbers from your notes, and a timeline of events or steps (`BLOCK_RENDERERS` in `StudyGuide.jsx`). The chart comes with a table view and shows each value on hover or focus. The model only adds a chart or a timeline when the material calls for one. Unknown or broken blocks get rejected in `schema.js` before React ever sees them.
+
+**Concept map.** This is the part I'd point a frontend reviewer at. The model sends concepts and labelled links as plain JSON, and everything else happens in the browser:
+
+- The layout is my own force simulation in `forceLayout.js`, with no graph library. Concepts push each other apart, links pull like springs, a weak gravity keeps the map together, boxes can't overlap, and walls keep it the size of the screen, so it fits a phone at 100% instead of being shrunk to tiny text. Repulsion is measured in box sizes, so wide cards keep more room beside them than above them, and a card sitting on a link it isn't part of gets nudged off it.
+- A force layout can settle into a tangle depending on where it starts. `buildLayout` tries 24 starts (a radial tree turned to different angles, a ring, and seeded random scatters), scores each for crossed links, links running under cards, link labels with no room, and wasted space, then keeps the best. It's deterministic, so the same map always looks the same. I tuned the forces by sweeping them over sample maps on laptop- and phone-sized screens, and a test checks the sample map comes out with no crossings on both.
+- Link labels are placed one at a time and skip any spot that would cover a card or another label. When you pick a concept, only its links are labelled and everything else fades.
+- Dragging runs the simulation live (with softer links, so neighbours trail along instead of the whole map lurching) on `requestAnimationFrame`, and stops once it cools down. Where you drop a card is saved, so it's still there after a reload. **Tidy up** glides everything back to a fresh layout.
+- Pan, pinch-zoom and Ctrl/⌘ + scroll zoom around the pointer. A plain scroll still scrolls the page. On a phone one finger scrolls the page and dragging a concept moves it.
+- Keyboard: the map is one tab stop. Arrow keys jump to the nearest concept in that direction (and pan to it if it's off screen), Enter picks, Escape clears, + / - / 0 zoom and fit. Concepts are buttons with their link count, the picked one is announced, and there's a list view. With reduced motion turned on, nothing drifts.
 
 **Streaming.** Each item appears the moment it's complete. A string-aware scanner walks the partial JSON and pulls out the finished items (`extractCompleteElements`). The study guide comes after the items, so the cards start streaming first.
 
@@ -202,13 +214,16 @@ All five are in.
 - Saved sets live in one browser's localStorage. No accounts, no sync. Download and Import are how you move a set.
 - Uploads only use a file's text. Images, charts and diagrams are ignored, scanned PDFs can't be read (there's no OCR), and old `.ppt` and `.doc` files need saving as `.pptx` or `.docx` first.
 - Keyboard use has been tested. Screen reader use hasn't been tested properly yet.
+- Concept-map boxes are sized from character counts rather than measured text, so a label in a very wide or narrow script can sit a little loose or tight in its box. The force settings were tuned on a handful of sample maps, so a big, dense map (up to 14 concepts and 24 links are kept) can still end up with a crossing or two. Demo mode only has a map for the photosynthesis sample.
+- Pinch and drag on the concept map were tested with simulated pointers, not on a real phone yet.
 - JSON mode and streaming support vary by provider and model. The server falls back when JSON mode is rejected, but a model that ignores the format altogether ends up leaning on the retry and salvage paths.
 
 ## What I'd do next
 
 - Use JSON-schema structured outputs on providers that support them together with streaming, and keep the current path as the fallback.
 - Replace "still learning / got it" with real spaced repetition, something like SM-2.
-- Let follow-up edits change the study guide too.
+- Let follow-up edits change the study guide too, including adding concepts to the map.
+- Let the concept map start a quiz on just the cards that mention a concept.
 - Export to Anki or CSV.
 - Playwright end-to-end tests for the failure scenarios, running in CI.
 - OCR for scanned PDFs, and sending the images in a file to models that can read them.
@@ -220,7 +235,7 @@ All five are in.
   Replace the placeholder below with what you actually did.
 -->
 
-I took help from Claude as a coding assistant, and I want to be upfront about how much it did. It wrote some of the first implementation from the assignment brief: the React components and styles, the test suites. It also checked the provider documentation for Gemini and Groq. Also Claude helped in adding the pdf feature in the input box.
+I took help from Claude as a coding assistant, and I want to be upfront about how much it did. It wrote some of the first implementation from the assignment brief: the React components and styles, the test suites. It also checked the provider documentation for Gemini and Groq. Also Claude helped in adding the pdf feature in the input box, and in building the concept map in the study guide.
 
 
 ## Time spent
