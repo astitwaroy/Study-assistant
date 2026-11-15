@@ -220,7 +220,7 @@ All five are in.
   Replace the placeholder below with what you actually did.
 -->
 
-I took help from Claude as a coding assistant, and I want to be upfront about how much it did. It wrote some of the first implementation from the assignment brief: the React components and styles, the test suites. It also checked the provider documentation for Gemini and Groq.
+I took help from Claude as a coding assistant, and I want to be upfront about how much it did. It wrote some of the first implementation from the assignment brief: the React components and styles, the test suites. It also checked the provider documentation for Gemini and Groq. Also Claude helped in adding the pdf feature in the input box.
 
 
 ## Time spent
